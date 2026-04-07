@@ -2,6 +2,7 @@ name: Job Alert Bot
 
 on:
   schedule:
+    # Runs every hour from 8–12 IST (UTC 2:30–6:30)
     - cron: '30 2-6 * * *'
   workflow_dispatch:
 
